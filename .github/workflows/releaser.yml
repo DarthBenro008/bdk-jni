@@ -1,11 +1,14 @@
-on: [push, pull_request]
+name: release
 
-name: Releaser
+on:
+  push:
+    tags:
+      - '*'
 
 jobs:
-  build-all:
-    name: Build all targets
-    runs-on: ubuntu-18.04
+  releaser:
+    name: build_releaser
+    runs-on: ubuntu-latest
     env:
       BUILD_TARGETS: aarch64,armv7,x86_64,i686
     steps:
@@ -19,8 +22,23 @@ jobs:
         run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
       - name: Build
         run: ./gradlew build
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
         with:
-          name: build-aar
-          path: library/build/outputs/aar/library-release.aar
+          draft: false
+          prerelease: false
+          release_name: bdk-jni-${{ github.ref }}
+          tag_name: ${{ github.ref }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: upload linux artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: library/build/outputs/aar/library-release.aar
+          asset_name: library-release.aar
+          asset_content_type: application/gzip
